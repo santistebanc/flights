@@ -100,15 +100,15 @@ export default function PlacesList({}) {
   const handleRemove = (item: Suggestion) => () => removeTourCity(item);
 
   return (
-    <div className="mt-4">
+    <div>
       <div className="flex">
         <div className="flex flex-col">
           <div className="flex">
             <button
               onClick={handleAdd}
-              className="px-1 bg-red-900 p-1 hover:bg-red-800"
+              className="bg-red-900 p-1 px-1 font-extrabold hover:bg-red-800"
             >
-              Add
+              ⌕
             </button>
             <input
               type="text"
@@ -116,17 +116,17 @@ export default function PlacesList({}) {
               onChange={handleInputChange}
               onFocus={handleFocus}
               onBlur={handleBlur}
-              className="pl-1 focus:outline-none focus:shadow-[0_0_0_2px_inset] focus:shadow-red-900"
+              className="pl-1 focus:shadow-[0_0_0_2px_inset] focus:shadow-red-900 focus:outline-none"
               onKeyDown={handleKeyDown}
               ref={input}
             />
           </div>
           {suggestions.length > 0 && focused && itemName.length > 0 && (
             <div className="relative">
-              <ul className="absolute bg-gray-red z-10 max-h-40 overflow-y-auto w-full">
+              <ul className="absolute z-10 max-h-40 w-full overflow-y-auto bg-gray-red">
                 {suggestions.map((sug, i) => (
                   <li
-                    className="px-2 py-1 cursor-pointer hover:bg-black "
+                    className="cursor-pointer px-2 py-1 hover:bg-black "
                     key={i}
                     onMouseDown={handleMouseDownOtion}
                     onClick={handleClickOption(sug)}

@@ -1,17 +1,12 @@
 import { db } from "./db";
 import axios from "axios";
 import { CORS_PROXY_URL } from "./constants";
-
-export type Date = {
-  year: number;
-  month: number;
-  day: number;
-};
+import { DateObject, fromDateTimeObject } from "./utils";
 
 export type QueryPlace = { iata: string } | { entityId: string };
 
 export type QueryLeg = {
-  date: Date;
+  date: DateObject;
   originPlaceId: QueryPlace;
   destinationPlaceId: QueryPlace;
 };
@@ -24,17 +19,6 @@ export type FlightsQuery = {
   cabinClass: string;
   queryLegs: QueryLeg[];
 };
-
-function getDate(data: any) {
-  return new Date(
-    data.year,
-    data.month - 1,
-    data.day,
-    data.hour,
-    data.minute,
-    data.second
-  );
-}
 
 function dumpFlightData(data: any) {
   const { carriers, places, legs, segments, itineraries } =
@@ -72,8 +56,8 @@ function dumpFlightData(data: any) {
       id,
       originPlaceId,
       destinationPlaceId,
-      departureDateTime: getDate(departureDateTime),
-      arrivalDateTime: getDate(arrivalDateTime),
+      departureDateTime: fromDateTimeObject(departureDateTime),
+      arrivalDateTime: fromDateTimeObject(arrivalDateTime),
       durationInMinutes,
       stopCount,
       marketingCarrierIds,
@@ -97,8 +81,8 @@ function dumpFlightData(data: any) {
       id,
       originPlaceId,
       destinationPlaceId,
-      departureDateTime: getDate(departureDateTime),
-      arrivalDateTime: getDate(arrivalDateTime),
+      departureDateTime: fromDateTimeObject(departureDateTime),
+      arrivalDateTime: fromDateTimeObject(arrivalDateTime),
       durationInMinutes,
       marketingFlightNumber,
       marketingCarrierId,

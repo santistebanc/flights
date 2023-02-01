@@ -2,14 +2,7 @@ import { useStore } from "effector-react";
 import { getFlights } from "./fetch";
 import { $homeCity, $visitCities } from "./tour_cities";
 import { $defaultDateRange } from "./tour_defaults";
-
-function toObjectDate(date: Date) {
-  return {
-    day: date.getDate(),
-    month: date.getMonth() + 1,
-    year: date.getFullYear(),
-  };
-}
+import { toDateObject } from "./utils";
 
 export default function FetchTour() {
   const homeCityArray = useStore($homeCity);
@@ -29,7 +22,7 @@ export default function FetchTour() {
       cabinClass: "CABIN_CLASS_ECONOMY",
       queryLegs: [
         {
-          date: toObjectDate(dateRange.from),
+          date: toDateObject(dateRange.from),
           originPlaceId: { entityId: homeCity.entityId },
           destinationPlaceId: { entityId: topCity.entityId },
         },
@@ -41,7 +34,7 @@ export default function FetchTour() {
     <div>
       <button
         onClick={handleClickFetch}
-        className="px-1 bg-cyan-900 font-bold p-1"
+        className="bg-cyan-900 p-1 px-1 font-bold"
       >
         Fetch
       </button>

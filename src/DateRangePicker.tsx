@@ -12,7 +12,6 @@ const pastMonth = new Date();
 export function DateRangePicker() {
   const classNames: ClassNames = {
     ...styles,
-    root: styles.root + " m-0",
     month: styles.month + " bg-neutral-700 first:mr-2 last:ml-2",
     head: styles.head + " bg-neutral-600",
   };
@@ -22,6 +21,7 @@ export function DateRangePicker() {
 
   return (
     <DayPicker
+      className="m-0"
       mode="range"
       classNames={classNames}
       modifiersClassNames={{

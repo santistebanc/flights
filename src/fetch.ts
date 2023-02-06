@@ -2,6 +2,22 @@ import { db } from "./db";
 import axios from "axios";
 import { CORS_PROXY_URL } from "./constants";
 import { DateObject, fromDateTimeObject } from "./utils";
+import Bottleneck from "bottleneck";
+
+const isRecent = (date?: Date) =>
+  date && Date.now() - date?.getTime() < 3 * 24 * 3600 * 1000;
+
+export const flightsCreateLimiter = new Bottleneck({
+  maxConcurrent: 1,
+  minTime: (60 * 1000) / 50,
+});
+
+export const flightsPollLimiter = new Bottleneck({
+  maxConcurrent: 1,
+  minTime: (60 * 1000) / 250,
+});
+
+export type FlightsFetchType = "create" | "poll";
 
 export type QueryPlace = { iata: string } | { entityId: string };
 
@@ -20,7 +36,8 @@ export type FlightsQuery = {
   queryLegs: QueryLeg[];
 };
 
-function dumpFlightData(data: any) {
+function dumpFlightData(data?: any) {
+  if (!data) return;
   const { carriers, places, legs, segments, itineraries } =
     data.content.results;
 
@@ -30,7 +47,7 @@ function dumpFlightData(data: any) {
   });
   const parsedPlaces = Object.entries(places).map(([id, data]) => {
     const { entityId, iata, name, parentId, type }: any = data;
-    return { id, entityId, iata, name, parentId, type };
+    return { entityId, iata, name, parentId, type };
   });
 
   const prices: any = {};
@@ -95,44 +112,119 @@ function dumpFlightData(data: any) {
   db.legs.bulkPut(parsedLegs);
 }
 
-export async function getFlights(query: FlightsQuery) {
-  const options = (sessionToken?: string) => ({
-    method: "POST",
-    url:
-      CORS_PROXY_URL +
-      ("https://partners.api.skyscanner.net/apiservices/v3/flights/live/search/" +
-        (sessionToken ? "poll/" + sessionToken : "create")),
-    data: JSON.stringify({ query }),
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "x-api-key": "prtl6749387986743898559646983194",
-    },
-  });
-  const initData: any = await axios
-    .request(options())
+const options = (query: FlightsQuery, sessionToken?: string) => ({
+  method: "POST",
+  mode: "no-cors",
+  url:
+    CORS_PROXY_URL +
+    ("https://partners.api.skyscanner.net/apiservices/v3/flights/live/search/" +
+      (sessionToken ? "poll/" + sessionToken : "create")),
+  data: JSON.stringify({ query }),
+  headers: {
+    "Access-Control-Allow-Origin": "*",
+    "Content-Type": "application/x-www-form-urlencoded",
+    "x-api-key": "prtl6749387986743898559646983194",
+  },
+});
+
+async function doFetch(
+  query: FlightsQuery,
+  type: FlightsFetchType,
+  onFail: (res: any) => void,
+  sessionToken?: string
+) {
+  console.log(
+    "fetching",
+    query.queryLegs[0].date,
+    query.queryLegs[0].originPlaceId,
+    query.queryLegs[0].destinationPlaceId
+  );
+  const date = new Date();
+  return await axios
+    .request(options(query, sessionToken))
     .then((res) => {
-      if (res.status === 429) throw res.statusText;
-      return res.data;
+      db.api_requests.add({
+        date,
+        endpoint: "flights",
+        type,
+        query: JSON.stringify({ query }),
+        status: res.status,
+      });
+      return res;
     })
-    .catch((err) => console.log(err));
+    .catch((err) => {
+      console.log(err);
+      if (err.response.status === 429) onFail(err);
+    });
+}
 
-  dumpFlightData(initData);
+async function fetchFlightsPoll(
+  onFail: (res: any) => void,
+  query: FlightsQuery,
+  sessionToken: string
+) {
+  const lastFetch = (
+    await db.api_requests.get({
+      endpoint: "flights",
+      type: "poll",
+      query: JSON.stringify({ query }),
+      status: 200,
+    })
+  )?.date;
 
-  const poll = async () => {
-    const data: any = await axios
-      .request(options(initData.sessionToken))
-      .then((res) => res.data)
-      .catch((err) => console.log(err));
+  if (isRecent(lastFetch)) {
+    console.log("request already made");
+    return;
+  }
 
-    dumpFlightData(data);
+  return flightsPollLimiter.schedule(async () => {
+    const res = await doFetch(query, "poll", onFail, sessionToken);
+    dumpFlightData(res?.data);
+    return res;
+  });
+}
 
-    return data.status;
-  };
+export async function getFlights(
+  query: FlightsQuery,
+  onFail: (res: any) => void
+) {
+  const lastFetch = (
+    await db.api_requests.get({
+      endpoint: "flights",
+      type: "create",
+      query: JSON.stringify({ query }),
+      status: 200,
+    })
+  )?.date;
 
-  let times = 0;
-  let status;
-  do {
-    times++;
-    status = await poll();
-  } while (times < 5 && status === "RESULT_STATUS_INCOMPLETE");
+  if (isRecent(lastFetch)) {
+    console.log("request already made");
+    return;
+  }
+
+  await flightsCreateLimiter.schedule(async () => {
+    const createRes = await doFetch(query, "create", onFail);
+
+    if (!createRes) return;
+
+    dumpFlightData(createRes.data);
+
+    const retry = async (times = 0) => {
+      console.log("retried", times);
+      if (times > 5) return;
+      const res = await fetchFlightsPoll(
+        onFail,
+        query,
+        createRes.data.sessionToken
+      );
+      const dataStatus = res?.data.status;
+      if (dataStatus === "RESULT_STATUS_INCOMPLETE") {
+        setTimeout(async () => {
+          retry(times + 1);
+        }, 200);
+      }
+    };
+
+    if (createRes.data.sessionToken) retry();
+  });
 }

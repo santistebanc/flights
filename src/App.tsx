@@ -2,8 +2,10 @@ import { DateRangePicker } from "./DateRangePicker";
 import FetchTour from "./FetchTour";
 import FlightsTable from "./Flights";
 import PlacesList from "./PlacesList";
+import useQueryParams from "./useQueryParams";
 
 function App() {
+  const { origin, destination } = useQueryParams();
   return (
     <div className="grid gap-2 p-5">
       <h1 className="mx-2 mt-3 mb-8 text-3xl font-bold">🛪 Tour Planner</h1>
@@ -12,7 +14,7 @@ function App() {
         <PlacesList />
       </div>
       <FetchTour />
-      <FlightsTable />
+      <FlightsTable origin={origin} destination={destination} />
     </div>
   );
 }

@@ -1,1 +1,1 @@
-export const CORS_PROXY_URL = "http://localhost:8080/";
+export const CORS_PROXY_URL = "https://silicon-paper-hearing.glitch.me/";

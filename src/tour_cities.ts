@@ -1,16 +1,16 @@
 import { createEvent, createStore } from "effector";
-import { Suggestion } from "./autosuggest";
+import { Place } from "./db";
 
-export const addTourCity = createEvent<Suggestion>();
-export const removeTourCity = createEvent<Suggestion>();
-export const moveUpTourCity = createEvent<Suggestion>();
-export const moveDownTourCity = createEvent<Suggestion>();
+export const addTourCity = createEvent<Place>();
+export const removeTourCity = createEvent<Place>();
+export const moveUpTourCity = createEvent<Place>();
+export const moveDownTourCity = createEvent<Place>();
 
-export const $tourCities = createStore<Suggestion[]>([])
+export const $tourCities = createStore<Place[]>([])
   .on(addTourCity, (list, item) => [...list, item])
   .on(removeTourCity, (list, item) => list.filter((it) => it !== item))
   .on(moveUpTourCity, (list, item) =>
-    list.reduce<Suggestion[]>(
+    list.reduce<Place[]>(
       (a, it, i, arr) =>
         i > 0 && it === item
           ? [...a.slice(0, i - 1), it, arr[i - 1]]
@@ -19,7 +19,7 @@ export const $tourCities = createStore<Suggestion[]>([])
     )
   )
   .on(moveDownTourCity, (list, item) =>
-    list.reduce<Suggestion[]>(
+    list.reduce<Place[]>(
       (a, it, i, arr) =>
         arr[i - 1] === item
           ? [...a.slice(0, i - 1), it, arr[i - 1]]

@@ -15,9 +15,10 @@ import {
   moveDownTourCity,
   moveUpTourCity,
 } from "./tour_cities";
+import { Place } from "./db";
 
 export default function PlacesList({}) {
-  const [itemName, setItemName] = useState("");
+  const [inputText, setInputText] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [focused, setFocused] = useState(false);
   const [keepFocus, setKeepFocus] = useState(false);
@@ -33,7 +34,7 @@ export default function PlacesList({}) {
         market: "MX",
         includedEntityTypes: ["PLACE_TYPE_AIRPORT", "PLACE_TYPE_CITY"],
       }).then((sug) => {
-        if (focused && itemName.length > 0) {
+        if (focused && inputText.length > 0) {
           setSuggestions(sug);
         }
       }),
@@ -47,7 +48,7 @@ export default function PlacesList({}) {
     } else {
       setSuggestions([]);
     }
-    setItemName(text);
+    setInputText(text);
   };
 
   const handleFocus = () => {
@@ -70,20 +71,20 @@ export default function PlacesList({}) {
 
   const handleClickOption = (sug: Suggestion) => () => {
     setKeepFocus(true);
-    setItemName("");
+    setInputText("");
     addTourCity(sug);
   };
 
   const handleAdd = () => {
     setKeepFocus(true);
-    const suggestion = suggestions.find((s) => s.name === itemName);
-    if (itemName.length && suggestion) {
-      setItemName("");
+    const suggestion = suggestions.find((s) => s.name === inputText);
+    if (inputText.length && suggestion) {
+      setInputText("");
       addTourCity(suggestion);
     }
   };
-  const handleMoveUp = (item: Suggestion) => () => moveUpTourCity(item);
-  const handleMoveDown = (item: Suggestion) => () => moveDownTourCity(item);
+  const handleMoveUp = (item: Place) => () => moveUpTourCity(item);
+  const handleMoveDown = (item: Place) => () => moveDownTourCity(item);
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -97,7 +98,7 @@ export default function PlacesList({}) {
     }
   };
 
-  const handleRemove = (item: Suggestion) => () => removeTourCity(item);
+  const handleRemove = (item: Place) => () => removeTourCity(item);
 
   return (
     <div>
@@ -112,7 +113,7 @@ export default function PlacesList({}) {
             </button>
             <input
               type="text"
-              value={itemName}
+              value={inputText}
               onChange={handleInputChange}
               onFocus={handleFocus}
               onBlur={handleBlur}
@@ -121,7 +122,7 @@ export default function PlacesList({}) {
               ref={input}
             />
           </div>
-          {suggestions.length > 0 && focused && itemName.length > 0 && (
+          {suggestions.length > 0 && focused && inputText.length > 0 && (
             <div className="relative">
               <ul className="absolute z-10 max-h-40 w-full overflow-y-auto bg-gray-red">
                 {suggestions.map((sug, i) => (
@@ -132,6 +133,9 @@ export default function PlacesList({}) {
                     onClick={handleClickOption(sug)}
                   >
                     {sug.name}
+                    {sug.type === "PLACE_TYPE_AIRPORT" &&
+                      sug.iata &&
+                      ` \t (${sug.iata})`}
                   </li>
                 ))}
               </ul>

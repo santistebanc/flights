@@ -78,3 +78,16 @@ export function fromDateTimeObject(obj: DateTimeObject): Date {
     obj.second
   );
 }
+
+export function omit<T extends object, K extends keyof T>(
+  obj: T,
+  ...keys: K[]
+): Omit<T, K> {
+  const _ = { ...obj };
+  keys.forEach((key) => delete _[key]);
+  return _;
+}
+
+export function getCombinations<T>(array: T[]) {
+  return array.flatMap((v, i) => array.slice(i + 1).map((w) => [v, w]));
+}

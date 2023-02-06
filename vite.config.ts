@@ -5,10 +5,9 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [
     react({
-      babel: {
-        plugins: ["effector-logger/babel-plugin"],
-      },
+      // babel: {
+      //   plugins: ["effector-logger/babel-plugin"],
+      // },
     }),
   ],
-  base: "/flights/",
 });

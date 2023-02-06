@@ -1,5 +1,7 @@
 import axios from "axios";
 import { CORS_PROXY_URL } from "./constants";
+import { Place, db } from "./db";
+import { omit } from "./utils";
 
 interface AutoSuggestQuery {
   market: string;
@@ -8,14 +10,7 @@ interface AutoSuggestQuery {
   includedEntityTypes: ("PLACE_TYPE_CITY" | "PLACE_TYPE_AIRPORT")[];
 }
 
-//TODO: save Places from suggestions to db
-
-export interface Suggestion {
-  entityId: string;
-  iata: string;
-  parentId: string;
-  name: string;
-  type: string;
+export interface Suggestion extends Place {
   highlighting: [number, number][];
 }
 
@@ -27,6 +22,7 @@ export async function suggestPlaces(query: AutoSuggestQuery) {
       "https://partners.api.skyscanner.net/apiservices/v3/autosuggest/flights",
     data: JSON.stringify({ query }),
     headers: {
+      "Access-Control-Allow-Origin": "*",
       "Content-Type": "application/json",
       "x-api-key": "prtl6749387986743898559646983194",
     },
@@ -39,14 +35,18 @@ export async function suggestPlaces(query: AutoSuggestQuery) {
     })
     .catch((err) => console.log(err));
 
-  const places: Suggestion[] = data.places.map((place: any) => ({
+  const suggestions: Suggestion[] = data.places.map((place: any) => ({
     entityId: place.entityId,
-    iata: place.iataCod,
+    iata: place.iataCode,
     parentId: place.parentId,
     name: place.name,
     type: place.type,
     highlighting: place.highlighting,
   }));
 
-  return places;
+  const newPlaces = suggestions.map((place) => omit(place, "highlighting"));
+
+  await db.places.bulkPut(newPlaces);
+
+  return suggestions;
 }

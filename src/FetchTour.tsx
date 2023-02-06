@@ -1,8 +1,57 @@
+import dayjs from "dayjs";
 import { useStore } from "effector-react";
-import { getFlights } from "./fetch";
+import { DateRange } from "react-day-picker";
+import { Place } from "./db";
+import { flightsCreateLimiter, flightsPollLimiter, getFlights } from "./fetch";
 import { $homeCity, $visitCities } from "./tour_cities";
 import { $defaultDateRange } from "./tour_defaults";
-import { toDateObject } from "./utils";
+import { getCombinations, toDateObject } from "./utils";
+import toast, { Toaster } from "react-hot-toast";
+
+async function fetchFlights(date: Date, origin: Place, destination: Place) {
+  console.log("FETCHING: ", date.toDateString(), origin.name, destination.name);
+
+  return await getFlights(
+    {
+      adults: 1,
+      currency: "MXN",
+      locale: "en-US",
+      market: "MX",
+      cabinClass: "CABIN_CLASS_ECONOMY",
+      queryLegs: [
+        {
+          date: toDateObject(date),
+          originPlaceId: { entityId: origin.entityId },
+          destinationPlaceId: { entityId: destination.entityId },
+        },
+      ],
+    },
+    () => {
+      console.log("API LIMIT REACHED");
+      toast("API LIMIT REACHED");
+      flightsCreateLimiter.stop();
+      flightsPollLimiter.stop();
+    }
+  );
+}
+
+function startTourFetch(
+  home: Place,
+  visitCities: Place[],
+  dateRange: DateRange
+) {
+  if (!dateRange.from) return;
+
+  for (
+    let d = dateRange.from;
+    d <= (dateRange.to ?? dateRange.from);
+    d = dayjs(d).add({ day: 1 }).toDate()
+  ) {
+    getCombinations([home, ...visitCities]).forEach(([origin, destination]) => {
+      fetchFlights(d, origin, destination);
+    });
+  }
+}
 
 export default function FetchTour() {
   const homeCityArray = useStore($homeCity);
@@ -14,20 +63,7 @@ export default function FetchTour() {
 
   const handleClickFetch = () => {
     if (!homeCity || !topCity || !dateRange.from) return;
-    getFlights({
-      adults: 1,
-      currency: "MXN",
-      locale: "en-US",
-      market: "MX",
-      cabinClass: "CABIN_CLASS_ECONOMY",
-      queryLegs: [
-        {
-          date: toDateObject(dateRange.from),
-          originPlaceId: { entityId: homeCity.entityId },
-          destinationPlaceId: { entityId: topCity.entityId },
-        },
-      ],
-    });
+    startTourFetch(homeCity, visitCities, dateRange);
   };
 
   return (
@@ -38,6 +74,7 @@ export default function FetchTour() {
       >
         Fetch
       </button>
+      <Toaster />
     </div>
   );
 }
